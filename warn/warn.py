@@ -102,6 +102,8 @@ class Warn:
         self.riceCog2 = dataIO.load_json(self.warning_settings)
         self.warninglist = "data/account/nobnl.json"
         self.norole = dataIO.load_json(self.warninglist)
+        self.modrole = "data/red/settings.json"
+        self.modrole2 = dataIO.load_json(self.modrole)
         for x in self.bot.servers:
             try:
                 self.norole[x.id]
@@ -453,8 +455,10 @@ class Warn:
             count = self.riceCog[server.id][user.id]["Count"]
         else:
             count = 0   
-
-        cog = self.bot.get_cog('Mod')
+        try:
+            defchannel = self.riceCog2[server.id]["defchannel"]
+        except:
+            defchannel = default_channel
         channel = discord.utils.get(server.channels, name = defchannel)
         if channel is None:
             msg = await self.bot.say ("I was unable to write to your log channel. Please make sure there is a channel called {} on the server!".format(defchannel))
@@ -774,18 +778,28 @@ class Warn:
         """Denies a user from the #bnl_discussion channel"""
         self.data_check(ctx)
         server = ctx.message.server
+        try:
+            defchannel = self.riceCog2[server.id]["defchannel"]
+        except:
+            defchannel = default_channel
+        channel = discord.utils.get(server.channels, name = defchannel)
+        if channel is None:
+            msg = await self.bot.say ("I was unable to write to your log channel. Please make sure there is a channel called {} on the server!".format(defchannel))
+            return
+        else:
+            pass
         if reason is None:
             msg = await self.bot.say("Please enter a reason for the warning!")
             await asyncio.sleep(5)
             await self.bot.delete_message(msg)
             return
-
-        if self.norole[server.id][user.id]['Role'] == True:
-            msg = await self.bot.say("This user has already been denied access to the #bnl_discussion channel.")
-            await asyncio.sleep(8)
-            await self.bot.delete_message(msg)          
-            await self.bot.delete_message(ctx.message)
-            return
+        if server.id in self.norole:
+            if self.norole[server.id][user.id]['Role'] == True:
+                msg = await self.bot.say("This user has already been denied access to the #bnl_discussion channel.")
+                await asyncio.sleep(8)
+                await self.bot.delete_message(msg)          
+                await self.bot.delete_message(ctx.message)
+                return
         else:
             nobnl = discord.utils.get(server.roles, name = "NoBNL")
             mod = ctx.message.author
@@ -793,7 +807,6 @@ class Warn:
             await self.bot.add_roles(user, nobnl)
             dmuser = await self.bot.start_private_message(user)
             await self.bot.send_message(dmuser, "Howdy!\nThis is to let you know that you have been denied access to the #bnl_discussion channel for the reason:\n\n```{}``` \nPlease speak to a member of staff if you have an issue.".format(reason))
-            channel = defchannel
             user=user
             reason=reason
             ID = uuid.uuid4()
@@ -1109,7 +1122,8 @@ class Warn:
         embed = msg.embeds[0]
         k = {'user':user, 'server':reaction.message.server}
         self.data_check(**k)
-        role_needed = discord.utils.get(server.roles, name="Freud")
+        roleneed = self.modrole2[server.id]['ADMIN_ROLE']
+        role_needed = discord.utils.get(server.roles, name = roleneed)
         try:
             defchannel = self.riceCog2[server.id]["defchannel"]
         except:
@@ -1248,7 +1262,7 @@ class Warn:
                     await self.bot.send_message(dmchannel, "**Error:** Please make sure to attach an image!")
                     await self.bot.remove_reaction(reaction.message, emoji = '\U0001f4ce', member = reactor)
             if reaction.emoji == '\U0001f5a8' and reaction.message.channel == logchannel:
-                print (embed)
+                print (role_needed)
             else:
                 return
 
