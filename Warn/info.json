@@ -1,9 +1,0 @@
-{
-    "AUTHOR" : "RSNFreud",
-    "INSTALL_MSG" : "Thanks for installing!",
-    "NAME" : "Warn",
-    "SHORT" : "A cog that combines the punish cog with the warn cog",
-    "DESCRIPTION" : "A cog that bans after your max amount of warnings, mutes after the first and lots more.",
-    "TAGS" : ["mod", "warn", "punish"],
-    "HIDDEN" : false
-}
