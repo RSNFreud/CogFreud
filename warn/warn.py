@@ -47,6 +47,7 @@ defmutetime = '10m'
 PURGE_MESSAGES = 1  # for cpunish
 PATH = 'data/account/'
 JSON = PATH + 'mutedtime.json'
+JSONLIST = PATH + 'warninglist.json'
 
 
 
@@ -104,6 +105,8 @@ class Warn:
         self.norole = dataIO.load_json(self.warninglist)
         self.modrole = "data/red/settings.json"
         self.modrole2 = dataIO.load_json(self.modrole)
+        self.warnlist = "data/account/warninglist.json"
+        self.warnlist2 = dataIO.load_json(self.warnlist)
         for x in self.bot.servers:
             try:
                 self.norole[x.id]
@@ -424,6 +427,9 @@ class Warn:
 
         if server.id not in self.riceCog:
             self.riceCog[server.id] = {}
+            
+        if server.id not in self.warnlist2:
+            self.warnlist2[server.id] = {}           
 
         if 'pm_warn' not in self.riceCog[server.id]:
             self.riceCog[server.id]['pm_warn'] = False
@@ -437,7 +443,7 @@ class Warn:
         try:
             mutetime = self.riceCog2[server.id]["mutetime"]
         except:
-            mutetime = mutetime
+            mutetime = defmutetime
         try:
             ban = self.riceCog2[server.id]["ban_message"]
         except:
@@ -521,6 +527,7 @@ class Warn:
             reason=reason
             countnum = "{}/3".format(count)
             ID = uuid.uuid4()
+            jsonid = "{}".format(ID)
             embed=discord.Embed(title="User Warned:", color=colour)
             embed.add_field(name="Case ID:", value=ID, inline=False)
             embed.add_field(name="Moderator:", value=mod, inline=False)
@@ -535,7 +542,15 @@ class Warn:
             self.riceCog[server.id][user.id].update({"Count": count})
             dataIO.save_json(self.profile,
                              self.riceCog)
-            log = None
+            
+            self.warnlist2[server.id][jsonid] = {
+                                        'User': user.id,
+                                        'Mod': mod.id,
+                                        'Reason': reason,
+                                        'Warning Number': countnum
+                                    }
+            dataIO.save_json(self.warnlist,
+                 self.warnlist2)   
             
         elif count > 0 and count < _max -1:
             count += 1
@@ -563,6 +578,7 @@ class Warn:
             user=user
             reason=reason
             ID = uuid.uuid4()
+            jsonid = "{}".format(ID)
             countnum = "{}/3".format(count)
             embed=discord.Embed(title="User Warned:", color=colour)
             embed.add_field(name="Case ID:", value=ID, inline=False)
@@ -577,7 +593,14 @@ class Warn:
             self.riceCog[server.id][user.id].update({"Count": count})
             dataIO.save_json(self.profile,
                              self.riceCog)
-
+            self.warnlist2[server.id][jsonid]= {
+                                        'User': user.id,
+                                        'Mod': mod.id,
+                                        'Reason': reason,
+                                        'Warning Number': countnum
+                                    }
+            dataIO.save_json(self.warnlist,
+                 self.warnlist2) 
 
         else:
             msg = ban
@@ -603,6 +626,8 @@ class Warn:
             user=user
             reason=reason
             ID = uuid.uuid4()
+            jsonid = "{}".format(ID)
+            bantext = "Max Warnings reached."
             embed=discord.Embed(title="User Banned:", color=colour)
             embed.add_field(name="Case ID:", value=ID, inline=False)
             embed.add_field(name="Moderator:", value=mod, inline=False)
@@ -617,6 +642,14 @@ class Warn:
             self.riceCog[server.id][user.id].update({"Count": count})
             dataIO.save_json(self.profile,
                              self.riceCog)
+            self.warnlist2[server.id][jsonid] = {
+                                        'User': user.id,
+                                        'Mod': mod.id,
+                                        'Reason': reason,
+                                        'Warning Number': bantext
+                                        }
+            dataIO.save_json(self.warnlist,
+                 self.warnlist2)                        
             try:
                 await self.bot.ban(user, delete_message_days=0)
             except discord.errors.Forbidden:
@@ -642,7 +675,47 @@ class Warn:
                                              poop_role)
                 except discord.errors.Forbidden:
                     await self.bot.say("No permission to add roles")
+                    
+    @commands.command(no_pm=True, pass_context=True)
+    @checks.mod()
+    async def warnings(self, ctx):
+        """Lists all the warnings on the server"""
+        server = ctx.message.server
+        server_id = server.id
+        if not (server_id in self.warnlist2 and self.warnlist2[server_id]):
+            await self.bot.say("No users are currently punished.")
+            return
 
+        def getmname(mid):
+            member = discord.utils.get(server.members, id=mid)
+            if member:
+                if member.nick:
+                    return '%s (%s)' % (member.nick, member)
+                else:
+                    return str(member)
+            else:
+                return '(member not present, id #%d)'
+
+        headers = ['Member', 'Warning Number', 'Moderator', 'Reason']
+        table = []
+        disp_table = []
+        now = time.time()
+        for member_id, data in self.warnlist2[server_id].items():
+
+            #if not member_id.isdigit():
+                #continue
+            print ("704")
+            member_name = getmname(data['User'])
+            warnnum = data['Warning Number']
+            punisher_name = getmname(data['Mod'])
+            reason = data['Reason']
+            table.append((member_name, warnnum, punisher_name, reason))
+
+        #for _, name, warnum, mod, reason in sorted(table, key=lambda x: x[0]):
+            disp_table.append((member_name, warnnum, punisher_name, reason))
+
+        for page in pagify(tabulate(disp_table, headers)):
+            await self.bot.say(box(page))
     @commands.command(no_pm=True, pass_context=True)
     @checks.mod()
     async def remove(self, ctx, user: discord.Member):
@@ -760,7 +833,7 @@ class Warn:
             count = self.riceCog[server.id][user.id]["Count"]
         else:
             count = 0
-        await self.bot.say("**The following punishments have been removed:**")
+        await self.bot.say("**The following punishments for {} have been removed:**".format(user))
         if count != 0:
             count = 0
             self.riceCog[server.id][user.id].update({"Count": count})
@@ -777,7 +850,7 @@ class Warn:
                     except discord.errors.Forbidden:
                         await self.bot.say("No permission to add roles")  
 
-        if self.norole[server.id][user.id]['Role'] == True:
+        if user.id in self.norole[server.id] and 'Role' == True:
             self.norole[server.id][user.id] = {'Role': False}
             dataIO.save_json(self.warninglist, self.norole)
             nobnl = discord.utils.get(server.roles, name = "NoBNL")
@@ -785,8 +858,7 @@ class Warn:
             msg = await self.bot.say("NoBNL Role")
 
         else:
-            msg = await self.bot.say("There were no punishments to remove for "
-                               + str(user) + "!")
+            msg = await self.bot.say("No more punishments to remove!")
     @commands.command(no_pm=True, pass_context=True)
     @checks.mod()
     async def deny(self, ctx, user: discord.Member, *, reason: str=None):
@@ -1049,7 +1121,7 @@ class Warn:
 
         await self.bot.edit_channel_permissions(channel, role, overwrite=perms)
         
-    async def on_channel_create(self, channel):
+    async def on_channel_create(self, channel, role):
         """Run when new channels are created and set up role permissions"""
         if channel.is_private:
             return
@@ -1060,7 +1132,7 @@ class Warn:
 
         await self.setup_channel(channel, role)
         
-    async def on_channel_update(self, channel):
+    async def on_channel_update(self, channel, role):
         """Run when channels are updated and set up role permissions"""
         if channel.is_private:
             return
@@ -1137,6 +1209,8 @@ class Warn:
         self.data_check(**k)
         roleneed = self.modrole2[server.id]['ADMIN_ROLE']
         role_needed = discord.utils.get(server.roles, name = roleneed)
+        if not role_needed in reactor.roles:
+            return
         try:
             defchannel = self.riceCog2[server.id]["defchannel"]
         except:
@@ -1153,8 +1227,7 @@ class Warn:
         else:
             pass
             
-        if not role_needed in reactor.roles:
-            return
+ 
         if 'title' not in embed:
             return
         if "Denied" in embed['title']:
@@ -1289,7 +1362,7 @@ def compat_load(path):
         for user, pdata in punishments.items():
             if not user.isdigit():
                 continue
-            by = pdata.pop('givenby', None)  # able to read Kownlin json
+            by = pdata.pop('givenby', None)
             by = by if by else pdata.pop('by', None)
             pdata['by'] = by
             pdata['until'] = pdata.pop('until', None)
@@ -1312,6 +1385,7 @@ def check_file():
     f = "data/account/warnings.json"
     g = "data/account/warning_settings.json"
     c = "data/account/nobnl.json"
+    d = "data/account/warninglist.json"
     if not dataIO.is_valid_json(f):
         print("Creating data/account/warnings.json")
         dataIO.save_json(f,
@@ -1323,6 +1397,10 @@ def check_file():
     if not dataIO.is_valid_json(c):
         print("Creating data/account/nobnl.json")
         dataIO.save_json(c,
+                         data)
+    if not dataIO.is_valid_json(d):
+        print("Creating data/account/warninglist.json")
+        dataIO.save_json(d,
                          data)
     if not dataIO.is_valid_json(JSON):
         print('Creating empty %s' % JSON)
