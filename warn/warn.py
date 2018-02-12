@@ -29,6 +29,7 @@ default_max = 3
 default_ban = ("After warn.limit warnings, user.name has been banned.")
 default_channel = "warning_review"
 default_muterole = 'Muted'
+defrevoke = "This is to let you know that a warning has been removed."
 try:
     from tabulate import tabulate
 except Exception as e:
@@ -94,7 +95,6 @@ class Warn:
         self.bot = bot
         self.json = compat_load(JSON)
         self.handles = {}
-        #self.analytics = CogAnalytics(self)
         bot.loop.create_task(self.on_load())
         self.profile = "data/account/warnings.json"
         self.riceCog = dataIO.load_json(self.profile)
@@ -159,18 +159,23 @@ class Warn:
             try:
                 muterole = self.riceCog2[server.id]["muterole"]
             except:
-                muterole = default_muterole                 
+                muterole = default_muterole 
+            try:
+                revokemsg = self.riceCog2[server.id]["revokemsg"]
+            except:
+                revokemsg = defrevoke                
             message = "```\n"
             message += "Warn Message - {}\n"
             message += "Ban Message - {}\n"
             message += "Warn Limit - {}\n"
             message += "Log Channel - {}\n"
             message += "Mute Time - {}\n" 
-            message += "Mute Role - {}\n"              
+            message += "Mute Role - {}\n"   
+            message += "Revoke Message - {}\n"               
             message += "```"
             await self.bot.say(message.format(msg,
                                               ban,
-                                              _max, defchannel, mutetime, muterole))
+                                              _max, defchannel, mutetime, muterole, revokemsg))
                                               
     @_warnset.command(no_pm=True, pass_context=True, manage_server=True)
     async def muterole(self, ctx, rolename: str):
@@ -264,6 +269,25 @@ class Warn:
                          self.riceCog2)
         await self.bot.say("Warn limit is now: \n{}".format(limit))
 
+    @_warnset.command(no_pm=True, pass_context=True)
+    @checks.admin_or_permissions(ban_members=True, manage_server=True)
+    async def revokemsg(self, ctx, *, msg=None):
+        self.data_check(ctx)
+        """Set the message on warning being revoked.
+
+        To get a full list of information, use **warnset message** without any parameters."""
+        if not msg:
+            await self.bot.say("```Set the message on warning being removed.\n\n"
+                               "To get a full list of information, use "
+                               "**warnset message** without any parameters.```")
+            return
+        server = ctx.message.server
+
+        self.riceCog2[server.id]["revokemsg"] = msg
+        dataIO.save_json(self.warning_settings,
+                         self.riceCog2)
+        await self.bot.say("Revoke message is now: \n{}".format(msg))
+        
     @_warnset.command(no_pm=True, pass_context=True)
     @checks.admin_or_permissions(ban_members=True, manage_server=True)
     async def ban(self, ctx, *, msg=None):
@@ -596,7 +620,7 @@ class Warn:
             try:
                 await self.bot.ban(user, delete_message_days=0)
             except discord.errors.Forbidden:
-                await self.bot.say("I dont have permissions to ban that user.")
+                await self.bot.say("I don't have permissions to ban that user.")
 
         if 'poop' in self.riceCog2[server.id] and can_role:
             if self.riceCog2[server.id]['poop'] == True:
@@ -628,6 +652,10 @@ class Warn:
         channel = ctx.message.channel
         can_role = channel.permissions_for(server.me).manage_roles
         count = self.riceCog[server.id][user.id]["Count"]
+        try:
+            revokemsg = self.riceCog2[server.id]["revokemsg"]
+        except:
+            revokemsg = defrevoke
 
         if server.id not in self.riceCog:
             self.riceCog[server.id] = {}
@@ -656,7 +684,7 @@ class Warn:
 
         if count != 0:
             msg = await self.bot.say("A warning for {} has been removed!".format(user))
-            await self.bot.send_message(user, "Howdy!\nThis is to let you know that your warning on {} has been reviewed and revoked!\n\n**The BNL Discord Staff**".format(discord.server.name))
+            await self.bot.send_message(user, revokemsg)
             count -= 1
             self.riceCog[server.id][user.id].update({"Count": count})
             dataIO.save_json(self.profile,
@@ -700,6 +728,7 @@ class Warn:
     @commands.command(no_pm=True, pass_context=True)
     @checks.mod()
     async def clean(self, ctx, user: discord.Member):
+        """Removes all punishments from a user"""
         self.data_check(ctx)
         author = ctx.message.author
         server = author.server
@@ -707,6 +736,7 @@ class Warn:
         channel = ctx.message.channel
         can_role = channel.permissions_for(server.me).manage_roles
         count = self.riceCog[server.id][user.id]["Count"]
+        muterole = await self.get_role(user.server)
 
         if server.id not in self.riceCog:
             self.riceCog[server.id] = {}
@@ -725,53 +755,38 @@ class Warn:
                                  self.riceCog)
             else:
                 pass
-
+        await self.bot.delete_message(ctx.message)
         if "Count" in self.riceCog[server.id][user.id]:
             count = self.riceCog[server.id][user.id]["Count"]
         else:
             count = 0
-
+        await self.bot.say("**The following punishments have been removed:**")
         if count != 0:
-            msg = await self.bot.say("Warnings for {} have been cleared!".format(user))
             count = 0
             self.riceCog[server.id][user.id].update({"Count": count})
             dataIO.save_json(self.profile,
                              self.riceCog)
+            self.bot.remove_roles(user, muterole)
+            msg = await self.bot.say("Mute Role")
             if 'poop' in self.riceCog2[server.id] and can_role:
                 if self.riceCog2[server.id]['poop'] == True:
                     try:
                         role = role = list(filter(lambda r: r.name.startswith('Warning \U0001f528'), server.roles))
                         await self.bot.remove_roles(user, *role)
+                        msg = await self.bot.say("Warning Roles")
                     except discord.errors.Forbidden:
-                        await self.bot.say("No permission to add roles")
-                    if count >=1:
-                        poops = count * "\U0001f528"
-                        role_name = "Warning {}".format(poops)
-                        is_there = False
-                        colour = 0xbc7642
-                        for role in server.roles:
-                            if role.name == role_name:
-                                poop_role = role
-                                is_there = True
-                        if not is_there:
-                            poop_role = await self.bot.create_role(server)
-                            await self.bot.edit_role(role=poop_role,
-                                                     name=role_name,
-                                                     server=server)
-                        try:
-                            await self.bot.add_roles(user,
-                                                     poop_role)
-                        except discord.errors.Forbidden:
-                            await self.bot.say("No permission to add roles")                             
-            await asyncio.sleep(15)
-            await self.bot.delete_message(msg)
-            await self.bot.delete_message(ctx.message)
+                        await self.bot.say("No permission to add roles")  
+
+        if self.norole[server.id][user.id]['Role'] == True:
+            self.norole[server.id][user.id] = {'Role': False}
+            dataIO.save_json(self.warninglist, self.norole)
+            nobnl = discord.utils.get(server.roles, name = "NoBNL")
+            await self.bot.remove_roles(user,nobnl)
+            msg = await self.bot.say("NoBNL Role")
+
         else:
-            msg = await self.bot.say("You don't have any warnings to clear, "
-                               + str(user.mention) + "!")
-            await asyncio.sleep(15)
-            await self.bot.delete_message(msg)
-            await self.bot.delete_message(ctx.message)
+            msg = await self.bot.say("There were no punishments to remove for "
+                               + str(user) + "!")
     @commands.command(no_pm=True, pass_context=True)
     @checks.mod()
     async def deny(self, ctx, user: discord.Member, *, reason: str=None):
@@ -793,42 +808,42 @@ class Warn:
             await asyncio.sleep(5)
             await self.bot.delete_message(msg)
             return
-        if server.id in self.norole:
+        if user.id in self.norole[server.id]:
             if self.norole[server.id][user.id]['Role'] == True:
                 msg = await self.bot.say("This user has already been denied access to the #bnl_discussion channel.")
                 await asyncio.sleep(8)
                 await self.bot.delete_message(msg)          
                 await self.bot.delete_message(ctx.message)
                 return
-        else:
-            nobnl = discord.utils.get(server.roles, name = "NoBNL")
-            mod = ctx.message.author
-            await self.bot.delete_message(ctx.message)
-            await self.bot.add_roles(user, nobnl)
-            dmuser = await self.bot.start_private_message(user)
-            await self.bot.send_message(dmuser, "Howdy!\nThis is to let you know that you have been denied access to the #bnl_discussion channel for the reason:\n\n```{}``` \nPlease speak to a member of staff if you have an issue.".format(reason))
-            user=user
-            reason=reason
-            ID = uuid.uuid4()
-            embed=discord.Embed(title="User Denied:", color=0xA00000)
-            embed.add_field(name="Case ID:", value=ID, inline=False)
-            embed.add_field(name="Moderator:", value=mod, inline=False)
-            embed.add_field(name="User:", value="{0} ({0.id})".format(user), inline=False)
-            embed.add_field(name="Reason:", value=reason, inline=False)
-            react = await self.bot.send_message(channel, embed=embed)
-            await self.bot.add_reaction(react, "\U0001f44d")
-            await self.bot.add_reaction(react, "\U0001f44e")
-            await self.bot.add_reaction(react, "\U0001f937")
-            self.norole[server.id][user.id] = {
-                'Reason': reason,
-                'Mod': ctx.message.author.id,
-                'Role': True
-            }
-            dataIO.save_json(self.warninglist, self.norole)
+            else:
+                nobnl = discord.utils.get(server.roles, name = "NoBNL")
+                mod = ctx.message.author
+                await self.bot.delete_message(ctx.message)
+                await self.bot.add_roles(user, nobnl)
+                dmuser = await self.bot.start_private_message(user)
+                await self.bot.send_message(dmuser, "Howdy!\nThis is to let you know that you have been denied access to the #bnl_discussion channel for the reason:\n\n```{}``` \nPlease speak to a member of staff if you have an issue.".format(reason))
+                user=user
+                reason=reason
+                ID = uuid.uuid4()
+                embed=discord.Embed(title="User Denied:", color=0xA00000)
+                embed.add_field(name="Case ID:", value=ID, inline=False)
+                embed.add_field(name="Moderator:", value=mod, inline=False)
+                embed.add_field(name="User:", value="{0} ({0.id})".format(user), inline=False)
+                embed.add_field(name="Reason:", value=reason, inline=False)
+                react = await self.bot.send_message(channel, embed=embed)
+                await self.bot.add_reaction(react, "\U0001f44d")
+                await self.bot.add_reaction(react, "\U0001f44e")
+                await self.bot.add_reaction(react, "\U0001f937")
+                self.norole[server.id][user.id] = {
+                    'Reason': reason,
+                    'Mod': ctx.message.author.id,
+                    'Role': True
+                }
+                dataIO.save_json(self.warninglist, self.norole)
     @commands.command(no_pm=True, pass_context=True)
     @checks.mod()
-    async def approve(self, ctx, user: discord.Member, *, reason: str=None):
-        """Denies a user from the #bnl_discussion channel"""
+    async def approve(self, ctx, user: discord.Member):
+        """Allows a user access to the #bnl_discussion channel"""
         server = ctx.message.server
         if user.id in self.norole[server.id]:
             if self.norole[server.id][user.id]['Role'] == True:
@@ -861,11 +876,9 @@ class Warn:
             role = discord.utils.get(server.roles, name=default_name)
 
         if role is None:
-            print ("850")
             perms = server.me.server_permissions
             if not perms.manage_roles and perms.manage_channels:
                 await self.bot.say("The Manage Roles and Manage Channels permissions are required to use this command.")
-                print ("854")
                 return None
 
             else:
@@ -1128,6 +1141,10 @@ class Warn:
             defchannel = self.riceCog2[server.id]["defchannel"]
         except:
             defchannel = default_channel
+        try:
+            revokemsg = self.riceCog2[server.id]["revokemsg"]
+        except:
+            revokemsg = defrevoke
         
         logchannel = discord.utils.get(server.channels, name = defchannel)
         if logchannel is None:
@@ -1188,7 +1205,7 @@ class Warn:
                     count = 0
 
                 if count != 0:
-                    await self.bot.send_message(user, "Howdy!\nThis is to let you know that your warning on the BNL Server has been reviewed and revoked!\n\n**The BNL Discord Staff**")
+                    await self.bot.send_message(user, revokemsg)
                     count -= 1
                     self.riceCog[server.id][user.id].update({"Count": count})
                     dataIO.save_json(self.profile,
