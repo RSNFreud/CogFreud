@@ -1113,7 +1113,6 @@ class Warn:
 
     async def setup_channel(self, channel, role):
         perms = discord.PermissionOverwrite()
-        role = await self.get_role(channel.server)
         
         if channel.type == discord.ChannelType.text:
             perms.send_messages = False
