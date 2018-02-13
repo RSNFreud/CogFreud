@@ -839,6 +839,7 @@ class Warn:
             self.riceCog[server.id][user.id].update({"Count": count})
             dataIO.save_json(self.profile,
                              self.riceCog)
+
             self.bot.remove_roles(user, muterole)
             msg = await self.bot.say("Mute Role")
             if 'poop' in self.riceCog2[server.id] and can_role:
@@ -1112,7 +1113,8 @@ class Warn:
 
     async def setup_channel(self, channel, role):
         perms = discord.PermissionOverwrite()
-
+        role = await self.get_role(channel.server)
+        
         if channel.type == discord.ChannelType.text:
             perms.send_messages = False
             perms.send_tts_messages = False
@@ -1121,7 +1123,7 @@ class Warn:
 
         await self.bot.edit_channel_permissions(channel, role, overwrite=perms)
         
-    async def on_channel_create(self, channel, role):
+    async def on_channel_create(self, channel):
         """Run when new channels are created and set up role permissions"""
         if channel.is_private:
             return
@@ -1131,17 +1133,7 @@ class Warn:
             return
 
         await self.setup_channel(channel, role)
-        
-    async def on_channel_update(self, channel, role):
-        """Run when channels are updated and set up role permissions"""
-        if channel.is_private:
-            return
-
-        role = await self.get_role(channel.server)
-        if not role:
-            return
-
-        await self.setup_channel(channel, role)
+       
         
     async def on_member_join(self, member):
         """Restore punishment if punished user leaves/rejoins"""
@@ -1283,6 +1275,9 @@ class Warn:
                     self.riceCog[server.id][user.id].update({"Count": count})
                     dataIO.save_json(self.profile,
                                      self.riceCog)
+                    #warnid = msg.embeds[0]['fields'][0]['value']
+                    #del(self.warnlist2[server.id][warnid])
+                    #dataIO.save_json(self.warnlist2, self.warnlist)
                     if 'poop' in self.riceCog2[server.id] and can_role:
                         if self.riceCog2[server.id]['poop'] == True:
                             try:
@@ -1352,7 +1347,8 @@ class Warn:
                     await self.bot.send_message(dmchannel, "**Error:** Please make sure to attach an image!")
                     await self.bot.remove_reaction(reaction.message, emoji = '\U0001f4ce', member = reactor)
             if reaction.emoji == '\U0001f5a8' and reaction.message.channel == logchannel:
-                print (role_needed)
+                printme = msg.embeds[0]['fields'][0]['value']
+                print (printme)
             else:
                 return
 
