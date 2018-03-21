@@ -911,7 +911,6 @@ class Warn:
                 return
             else:
                 nobnl = discord.utils.get(server.roles, name = "NoBNL")
-                muterole = self.riceCog2[server.id]["muterole"]
                 role = nobnl            
                 mod = ctx.message.author
                 await self.bot.delete_message(ctx.message)
@@ -946,7 +945,6 @@ class Warn:
                     await self.bot.edit_channel_permissions(channel, role, overwrite=perms)            
         else:
             nobnl = discord.utils.get(server.roles, name = "NoBNL")
-            muterole = self.riceCog2[server.id]["muterole"]
             role = nobnl            
             mod = ctx.message.author
             await self.bot.delete_message(ctx.message)
