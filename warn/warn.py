@@ -133,6 +133,7 @@ class Warn:
 
 
     @commands.group(no_pm=True, pass_context=True, name='warnset')
+    @checks.mod
     async def _warnset(self, ctx):
         self.data_check(ctx)
         if ctx.message.server.id not in self.riceCog2:
@@ -944,7 +945,6 @@ class Warn:
                         perms.read_messages = False
                     await self.bot.edit_channel_permissions(channel, role, overwrite=perms)            
         else:
-            print(testing)
             nobnl = discord.utils.get(server.roles, name = "NoBNL")
             muterole = self.riceCog2[server.id]["muterole"]
             role = nobnl            
