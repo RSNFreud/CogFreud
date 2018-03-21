@@ -30,6 +30,7 @@ default_ban = ("After warn.limit warnings, user.name has been banned.")
 default_channel = "warning_review"
 default_muterole = 'Muted'
 defrevoke = "This is to let you know that a warning has been removed."
+defchannelmute = "general"
 try:
     from tabulate import tabulate
 except Exception as e:
@@ -166,7 +167,11 @@ class Warn:
             try:
                 revokemsg = self.riceCog2[server.id]["revokemsg"]
             except:
-                revokemsg = defrevoke                
+                revokemsg = defrevoke 
+            try:
+                channelmute = self.riceCog2[server.id]["channelmute"]
+            except:
+                channelmute = defchannelmute                 
             message = "```\n"
             message += "Warn Message - {}\n"
             message += "Ban Message - {}\n"
@@ -174,11 +179,12 @@ class Warn:
             message += "Log Channel - {}\n"
             message += "Mute Time - {}\n" 
             message += "Mute Role - {}\n"   
-            message += "Revoke Message - {}\n"               
+            message += "Revoke Message - {}\n"    
+            message += "Mute Channel - {}\n"                
             message += "```"
             await self.bot.say(message.format(msg,
                                               ban,
-                                              _max, defchannel, mutetime, muterole, revokemsg))
+                                              _max, defchannel, mutetime, muterole, revokemsg, channelmute))
                                               
     @_warnset.command(no_pm=True, pass_context=True, manage_server=True)
     async def muterole(self, ctx, rolename: str):
@@ -222,6 +228,16 @@ class Warn:
                          self.riceCog2)
         await self.bot.say("Log channel is now: **{}**".format(channel))
             
+    @_warnset.command(no_pm=True, pass_context=True, manage_server=True)
+    async def mutechannel(self, ctx, channel: str):
+        """Change the default mute channel"""
+        self.data_check(ctx)
+        server = ctx.message.server
+
+        self.riceCog2[server.id]["mutechannel"] = channel
+        dataIO.save_json(self.warning_settings,
+                         self.riceCog2)
+        await self.bot.say("Mute channel is now: **{}**".format(channel))            
     @_warnset.command(no_pm=True, pass_context=True, manage_server=True)
     async def pm(self, ctx):
         """Enable/disable PM warn"""
@@ -863,13 +879,17 @@ class Warn:
     @commands.command(no_pm=True, pass_context=True, hidden=True)
     @checks.mod()
     async def deny(self, ctx, user: discord.Member, *, reason: str=None):
-        """Denies a user from the #bnl_discussion channel"""
+        """Denies a user from the channel"""
         self.data_check(ctx)
         server = ctx.message.server
         try:
             defchannel = self.riceCog2[server.id]["defchannel"]
         except:
             defchannel = default_channel
+        try:
+            channelmute = self.riceCog2[server.id]["channelmute"]
+        except:
+            channelmute = defchannelmute   
         channel = discord.utils.get(server.channels, name = defchannel)
         if channel is None:
             msg = await self.bot.say ("I was unable to write to your log channel. Please make sure there is a channel called {} on the server!".format(defchannel))
@@ -883,18 +903,20 @@ class Warn:
             return
         if user.id in self.norole[server.id]:
             if self.norole[server.id][user.id]['Role'] == True:
-                msg = await self.bot.say("This user has already been denied access to the #bnl_discussion channel.")
+                msg = await self.bot.say("This user has already been denied access to the channel.")
                 await asyncio.sleep(8)
                 await self.bot.delete_message(msg)          
                 await self.bot.delete_message(ctx.message)
                 return
             else:
                 nobnl = discord.utils.get(server.roles, name = "NoBNL")
+                muterole = self.riceCog2[server.id]["muterole"]
+                role = nobnl            
                 mod = ctx.message.author
                 await self.bot.delete_message(ctx.message)
                 await self.bot.add_roles(user, nobnl)
                 dmuser = await self.bot.start_private_message(user)
-                await self.bot.send_message(dmuser, "Howdy!\nThis is to let you know that you have been denied access to the #bnl_discussion channel for the reason:\n\n```{}``` \nPlease speak to a member of staff if you have an issue.".format(reason))
+                await self.bot.send_message(dmuser, "Howdy!\nThis is to let you know that you have been denied access to the channel for the reason:\n\n```{}``` \nPlease speak to a member of staff if you have an issue.".format(reason))
                 user=user
                 reason=reason
                 ID = uuid.uuid4()
@@ -913,6 +935,50 @@ class Warn:
                     'Role': True
                 }
                 dataIO.save_json(self.warninglist, self.norole)
+                channel = discord.utils.get(server.channels, name = channelmute)
+                for channel in server.channels:
+                    perms = discord.PermissionOverwrite()
+                    
+                    if channel.type == discord.ChannelType.text:
+                        perms.send_messages = False
+                        perms.read_messages = False
+                    await self.bot.edit_channel_permissions(channel, role, overwrite=perms)            
+        else:
+            print(testing)
+            nobnl = discord.utils.get(server.roles, name = "NoBNL")
+            muterole = self.riceCog2[server.id]["muterole"]
+            role = nobnl            
+            mod = ctx.message.author
+            await self.bot.delete_message(ctx.message)
+            await self.bot.add_roles(user, nobnl)
+            dmuser = await self.bot.start_private_message(user)
+            await self.bot.send_message(dmuser, "Howdy!\nThis is to let you know that you have been denied access to the channel for the reason:\n\n```{}``` \nPlease speak to a member of staff if you have an issue.".format(reason))
+            user=user
+            reason=reason
+            ID = uuid.uuid4()
+            embed=discord.Embed(title="User Denied:", color=0xA00000)
+            embed.add_field(name="Case ID:", value=ID, inline=False)
+            embed.add_field(name="Moderator:", value=mod, inline=False)
+            embed.add_field(name="User:", value="{0} ({0.id})".format(user), inline=False)
+            embed.add_field(name="Reason:", value=reason, inline=False)
+            react = await self.bot.send_message(channel, embed=embed)
+            await self.bot.add_reaction(react, "\U0001f44d")
+            await self.bot.add_reaction(react, "\U0001f44e")
+            await self.bot.add_reaction(react, "\U0001f937")
+            self.norole[server.id][user.id] = {
+                'Reason': reason,
+                'Mod': ctx.message.author.id,
+                'Role': True
+            }
+            dataIO.save_json(self.warninglist, self.norole)
+            channel = discord.utils.get(server.channels, name = channelmute)
+            for channel in server.channels:
+                perms = discord.PermissionOverwrite()
+                
+                if channel.type == discord.ChannelType.text:
+                    perms.send_messages = False
+                    perms.read_messages = False
+                await self.bot.edit_channel_permissions(channel, role, overwrite=perms)
     @commands.command(no_pm=True, pass_context=True, hidden=True)
     @checks.mod()
     async def approve(self, ctx, user: discord.Member):
@@ -1116,7 +1182,6 @@ class Warn:
         
         if channel.type == discord.ChannelType.text:
             perms.send_messages = False
-            perms.send_tts_messages = False
         elif channel.type == discord.ChannelType.voice:
             perms.speak = False
 
