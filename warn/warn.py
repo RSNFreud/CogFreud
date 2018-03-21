@@ -860,7 +860,7 @@ class Warn:
 
         else:
             msg = await self.bot.say("No more punishments to remove!")
-    @commands.command(no_pm=True, pass_context=True)
+    @commands.command(no_pm=True, pass_context=True, hidden=True)
     @checks.mod()
     async def deny(self, ctx, user: discord.Member, *, reason: str=None):
         """Denies a user from the #bnl_discussion channel"""
@@ -913,7 +913,7 @@ class Warn:
                     'Role': True
                 }
                 dataIO.save_json(self.warninglist, self.norole)
-    @commands.command(no_pm=True, pass_context=True)
+    @commands.command(no_pm=True, pass_context=True, hidden=True)
     @checks.mod()
     async def approve(self, ctx, user: discord.Member):
         """Allows a user access to the #bnl_discussion channel"""
