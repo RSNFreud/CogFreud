@@ -133,7 +133,7 @@ class Warn:
 
 
     @commands.group(no_pm=True, pass_context=True, name='warnset')
-    @checks.mod
+    @checks.mod()
     async def _warnset(self, ctx):
         self.data_check(ctx)
         if ctx.message.server.id not in self.riceCog2:
