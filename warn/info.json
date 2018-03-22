@@ -1,6 +1,6 @@
 {
     "AUTHOR" : "RSNFreud",
-    "INSTALL_MSG" : "Thanks for installing!",
+    "INSTALL_MSG" : "Thanks for installing! This cog is currently in its Beta phase that means that there might be things that don't work. In that case please open a issue on the github.",
     "NAME" : "Warn",
     "SHORT" : "A cog that combines the punish cog with the warn cog",
     "DESCRIPTION" : "A cog that bans after your max amount of warnings, mutes after the first and lots more.",
