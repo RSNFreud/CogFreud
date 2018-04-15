@@ -791,9 +791,8 @@ class fmod:
         """Restore punishment if punished user leaves/rejoins"""
         sid = member.server.id
         rolename = self.settingsload[server.id]['Mute Role']
-        role2 = discord.utils.get(server.roles, name=rolename)
+        role = discord.utils.get(server.roles, name=rolename)
         deniedrole = self.settingsload[server.id]['Denied Role']
-        role = await self.get_role(member.server)
         #re-adds warning roles
         if 'Punishment Roles' in self.settingsload[sid]:
             if self.settingsload[sid]['Punishment Roles'] == True:
@@ -836,7 +835,7 @@ class fmod:
             duration = self.warningsload[sid][member.id]['User Muted']['until'] - time.time()
             if duration > 0:
                 role = discord.utils.get(member.server.roles, name=muterole)
-                await self.bot.add_roles(member, role2)
+                await self.bot.add_roles(member, role)
                 
                 
                 if member.id not in self.handles[sid]:
@@ -908,13 +907,12 @@ class fmod:
             msg = '{} (Member not present)'.format(mid)
             return msg
 
-    async def delwarning(self, ctx, server, warnid):
+    async def delwarning(self, ctx, server, warnid, reason):
         server = ctx.message.server
         channel = ctx.message.channel
         revokemessage = self.settingsload[server.id]['Revoke Message']
         rolename = self.settingsload[server.id]['Mute Role']
-        role2 = discord.utils.get(server.roles, name=rolename)
-        role = await self.get_role(member.server)
+        role = discord.utils.get(server.roles, name=rolename)
         for mid in self.warningsload[server.id]:
             try:
                 for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
@@ -923,27 +921,39 @@ class fmod:
                         await self.bot.say("Are you sure you want to delete warn number **{}**?\n\nType `yes` to continue.".format(warnid)) 
                         continuemsg = await self.bot.wait_for_message(channel=channel, author=ctx.message.author)
                         if 'yes' in continuemsg.content:
+                            user = discord.utils.get(server.members, id = mid)
                             await self.bot.say("Warning deleted!")
                             if data['Warning Number'] == 'This user has been denied from a channel':
                                 role = self.settingsload[server.id]['Denied Role']
                                 role = discord.utils.get(server.roles, name = role)
-                                user = discord.utils.get(server.members, id = mid)
                                 await self.bot.remove_roles(user,role)
                                 await self.bot.say("The denied role has been removed from this user!")
-                            for role in member.server.roles:
-                                if role.name == role2:
-                                    user = discord.utils.get(server.members, id = mid)
+                            for role in user.server.roles:
+                                if role.name == role:
                                     await self.bot.remove_roles(user,role2)
                                     break
                             else:
                                 count = self.warningsload[server.id][mid]["Count"]
                                 count = int(count)-1
                                 self.warningsload[server.id][mid].update({"Count": count}) 
-                                user = discord.utils.get(server.members, id = mid)                                
-                                await self.bot.send_message(user, revokemessage)
+                            embed = discord.Embed(title='Warning Revoked by {}'.format(ctx.message.author), description = revokemessage)
+                            embed.add_field(name = 'Reason:', value = reason)
+                            channel = await self.bot.start_private_message(user)
+                            await self.bot.send_message(channel, embed=embed)
                             warnid = warning_key
                             del(self.warningsload[server.id][mid]['Warnings'][warnid])
                             dataIO.save_json(self.warnings, self.warningsload)
+                            logchannel = self.settingsload[server.id]["Log Channel"]
+                            logchannel = discord.utils.get(server.channels, name = logchannel)
+                            messageid = data['Message ID']
+                            print(messageid)
+                            try:
+                                embed2 = await self.bot.get_message(logchannel, messageid)
+                            except discord.NotFound:
+                                await self.bot.say("Log Message is not found. If you changed the log channel you will need to react to the message there")
+                            newembed = discord.Embed(title='Warning Revoked', description='The warning for **{}** has been revoked by **{}** for the reason **{}**.'.format(user, ctx.message.author, reason))
+                            await self.bot.edit_message(embed2, embed=newembed)
+                            await self.bot.clear_reactions(embed2)
                             return
                     # else:
                 await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
@@ -953,13 +963,13 @@ class fmod:
                     
     @commands.command(no_pm=True, pass_context=True)
     @checks.admin()
-    async def delwarn(self, ctx, id):
+    async def delwarn(self, ctx, id, *, reason):
         server = ctx.message.server
         channel = ctx.message.channel
         if server.id not in self.settingsload:
             await self.bot.say("Please run the `[p]setup` command before running this command.")
             return
-        await self.delwarning(ctx, server = server, warnid=id)
+        await self.delwarning(ctx, server = server, warnid=id, reason=reason)
 
     @commands.command(no_pm=True, pass_context=True)
     @checks.admin()
@@ -1163,7 +1173,7 @@ class fmod:
         await self.bot.wait_for_message(channel = channel, author=ctx.message.author, content = 'yes')
         await self.bot.send_message(channel, "Please enter a reason")
         reason = await self.bot.wait_for_message(channel=channel, author=ctx.message.author)
-        await self.bot.send_message(channel, "Your reason is {}. Are you sure? \n\n Type `yes` to continue or `no` to return.".format(reason.content))
+        await self.bot.send_message(channel, "Your reason is {}. Are you sure? \n\nType `yes` to continue or `no` to return.".format(reason.content))
         confirm = await self.bot.wait_for_message(channel=channel, author=ctx.message.author)
         attachlist = []
         while confirm.content is not None:
