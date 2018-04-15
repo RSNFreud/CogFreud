@@ -1141,7 +1141,6 @@ class fmod:
                 continue
                 
     @commands.command(no_pm=True, pass_context=True)
-    @checks.mod()
     async def report(self, ctx, user: discord.Member):
         """Reports a user to the staff"""
         server = ctx.message.server
