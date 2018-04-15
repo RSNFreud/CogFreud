@@ -1208,7 +1208,7 @@ def check_file():
         dataIO.save_json(a,
                          data)
     if not dataIO.is_valid_json(b):
-        print("Creating data/fmod/settings.json")
+        print("Creating data/fmod/warnings.json")
         dataIO.save_json(b,
                          data) 
 def setup(bot):
