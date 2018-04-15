@@ -72,23 +72,6 @@ class fmod:
         self.warningsload = dataIO.load_json(self.warnings)   
         self.handles = {}        
         
-    async def currentsettings(self, ctx, channel, server):
-    
-        jsonload = self.settingsload[server.id]
-        message = "```\n"
-        message += "Warn Message: {Warn Message},\n"
-        message += "Ban Message: {Ban Message},\n" 
-        message += "Warn Limit : {Warn Limit}, \n"
-        message += "Log Channel : {Log Channel}, \n"
-        message += "Mute Time : {Mute Time}, \n"
-        message += "Mute Role : {Mute Role},\n"
-        message += "Denied Role : {Denied Role},\n"
-        message += "Denied Channel : {Denied Channel},\n"
-        message += "Revoke Message : {Revoke Message},\n"
-        message += "DM Warn : {DM Warn},\n"  
-        message += "Punishment Roles : {Punishment Roles}"                         
-        message += "```"
-        await self.bot.send_message(channel, message.format(**jsonload))
     @commands.command(no_pm=True, pass_context=True)
     @checks.admin()
     async def setup(self, ctx):
@@ -217,16 +200,34 @@ class fmod:
                 await self.currentsettings(ctx, channel, server)
             else:
                 pass
+    async def currentsettings(self, ctx, channel, server):
+        if server.id not in self.settingsload:
+            pass   
+        jsonload = self.settingsload[server.id]
+        message = "```\n"
+        message += "Warn Message: {Warn Message},\n"
+        message += "Ban Message: {Ban Message},\n" 
+        message += "Warn Limit : {Warn Limit}, \n"
+        message += "Log Channel : {Log Channel}, \n"
+        message += "Mute Time : {Mute Time}, \n"
+        message += "Mute Role : {Mute Role},\n"
+        message += "Denied Role : {Denied Role},\n"
+        message += "Denied Channel : {Denied Channel},\n"
+        message += "Revoke Message : {Revoke Message},\n"
+        message += "DM Warn : {DM Warn},\n"  
+        message += "Punishment Roles : {Punishment Roles}"                         
+        message += "```"
+        await self.bot.send_message(channel, message.format(**jsonload))
            
     @commands.group(no_pm=True, pass_context=True, name='settings')
     @checks.admin() 
     async def _settings(self,ctx):
         """Sets individual settings for the cog"""
+        channel = ctx.message.channel
+        server = ctx.message.server
         if server.id not in self.settingsload:
             await self.bot.say("Please run the `[p]setup` command before running this command.")
             return
-        channel = ctx.message.channel
-        server = ctx.message.server
         if ctx.invoked_subcommand is None:
             await send_cmd_help(ctx)
             await self.currentsettings(ctx, channel, server)
