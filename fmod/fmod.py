@@ -791,9 +791,9 @@ class fmod:
         """Restore punishment if punished user leaves/rejoins"""
         sid = member.server.id
         rolename = self.settingsload[server.id]['Mute Role']
-        role = discord.utils.get(server.roles, name=rolename)
+        role2 = discord.utils.get(server.roles, name=rolename)
         deniedrole = self.settingsload[server.id]['Denied Role']
-        
+        role = await self.get_role(member.server)
         #re-adds warning roles
         if 'Punishment Roles' in self.settingsload[sid]:
             if self.settingsload[sid]['Punishment Roles'] == True:
@@ -836,7 +836,7 @@ class fmod:
             duration = self.warningsload[sid][member.id]['User Muted']['until'] - time.time()
             if duration > 0:
                 role = discord.utils.get(member.server.roles, name=muterole)
-                await self.bot.add_roles(member, role)
+                await self.bot.add_roles(member, role2)
                 
                 
                 if member.id not in self.handles[sid]:
@@ -912,6 +912,9 @@ class fmod:
         server = ctx.message.server
         channel = ctx.message.channel
         revokemessage = self.settingsload[server.id]['Revoke Message']
+        rolename = self.settingsload[server.id]['Mute Role']
+        role2 = discord.utils.get(server.roles, name=rolename)
+        role = await self.get_role(member.server)
         for mid in self.warningsload[server.id]:
             try:
                 for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
@@ -927,6 +930,11 @@ class fmod:
                                 user = discord.utils.get(server.members, id = mid)
                                 await self.bot.remove_roles(user,role)
                                 await self.bot.say("The denied role has been removed from this user!")
+                            for role in member.server.roles:
+                                if role.name == role2:
+                                    user = discord.utils.get(server.members, id = mid)
+                                    await self.bot.remove_roles(user,role2)
+                                    break
                             else:
                                 count = self.warningsload[server.id][mid]["Count"]
                                 count = int(count)-1
