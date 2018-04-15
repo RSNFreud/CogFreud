@@ -427,6 +427,8 @@ class fmod:
     async def embedlog(self, mod, user, reason, countnum, channel, ID, warntype):
         if warntype == 'Denied':
             embed=discord.Embed(title="User Denied:")
+        if warntype == 'Ban':
+            embed=discord.Embed(title="User Banned:")
         else:
             embed=discord.Embed(title="User Warned:")
         embed.add_field(name="Case ID:", value=ID, inline=False)
@@ -565,7 +567,7 @@ class fmod:
                  self.warningsload) 
             
        
-        elif count <= max - 1:
+        elif count > 0 and count < max -1:
             count += 1
             self.warningsload[server.id][user.id].update({"Count": count})
             dataIO.save_json(self.warnings,
@@ -637,7 +639,7 @@ class fmod:
                 #if dm is not on
                 await self.bot.say(embed=data)
         #run and log
-            countnum = "{}/{}".format(count,_max)
+            countnum = "Max warnings reached"
             mod = ctx.message.author
             if 'ID' not in self.warningsload[server.id]:
                 self.warningsload[server.id].update({'ID': ID})
@@ -649,7 +651,7 @@ class fmod:
                 self.warningsload[server.id].update({'ID': ID})
                 dataIO.save_json(self.warnings,
                              self.warningsload)
-            await self.embedlog(mod, user, reason, countnum, channel, ID, warntype=True)
+            await self.embedlog(mod, user, reason, countnum, channel, ID, warntype='Ban')
             #msgid = ctx.message.id
             if 'Warnings' in self.warningsload[server.id][user.id]:
                 pass
@@ -759,7 +761,7 @@ class fmod:
             self.handles[sid] = {}
 
         if member.id in self.handles[sid]:
-            self.handles[server.id][member.id].cancel()
+            self.handles[sid][member.id].cancel()
 
         coro = self._unpunish(member, reason)
 
