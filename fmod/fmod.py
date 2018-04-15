@@ -425,9 +425,9 @@ class fmod:
                           str(_max))
         return msg
     async def embedlog(self, mod, user, reason, countnum, channel, ID, warntype):
-        if warntype == 'Denied':
+        if warntype == 'denied':
             embed=discord.Embed(title="User Denied:")
-        if warntype == 'Ban':
+        elif warntype == 'Ban':
             embed=discord.Embed(title="User Banned:")
         else:
             embed=discord.Embed(title="User Warned:")
@@ -639,7 +639,7 @@ class fmod:
                 #if dm is not on
                 await self.bot.say(embed=data)
         #run and log
-            countnum = "Max warnings reached"
+            countnum = "Banned"
             mod = ctx.message.author
             if 'ID' not in self.warningsload[server.id]:
                 self.warningsload[server.id].update({'ID': ID})
@@ -671,8 +671,8 @@ class fmod:
                 await self.bot.ban(user, delete_message_days=0)
             except discord.errors.Forbidden:
                 await self.bot.say("I don't have permissions to ban that user.")
-        if 'Punishment Roles' in self.warningsload[server.id] and can_role:
-            if self.warningsload[server.id]['Punishment Roles'] == True:
+        if 'Punishment Roles' in self.settingsload[server.id] and can_role:
+            if self.settingsload[server.id]['Punishment Roles'] == True:
                 poops = count * "\U0001f528"
                 role_name = "Warning {}".format(poops)
                 is_there = False
@@ -791,15 +791,17 @@ class fmod:
         
     async def on_member_join(self, member):
         """Restore punishment if punished user leaves/rejoins"""
+        server = member.server
         sid = member.server.id
-        rolename = self.settingsload[server.id]['Mute Role']
+        
         role = discord.utils.get(server.roles, name=rolename)
         deniedrole = self.settingsload[server.id]['Denied Role']
+        count = self.warningsload[server.id][member.id]["Count"]
         #re-adds warning roles
         if 'Punishment Roles' in self.settingsload[sid]:
             if self.settingsload[sid]['Punishment Roles'] == True:
                 if member.id in self.warningsload[sid]:
-                    if count != 0:
+                    if count >= 1:
                         count = self.warningsload[sid][member.id]["Count"]
                         poops = "\U0001f528" * count
                         role_name = "Warning {}".format(poops)
@@ -823,28 +825,28 @@ class fmod:
                 else:
                     pass
         #checks if denied from a channel and re-adds role
-        for member.id in self.warningsload[sid]:
+        for mid in self.warningsload[sid]:
             try:
                 for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
-                    if self.warningsload[sid][mid]['Warnings'][warning_key]['Warning Number'] == 'This user has been denied from a channel':          
+                    if data['Warning Number'] == 'Channel Denied':          
                         role = discord.utils.get(server.roles, name=deniedrole)
                         await self.bot.add_roles(member, role)
                         break
             except:
                 continue
-
         if 'User Muted' in self.warningsload[sid][member.id]:
             duration = self.warningsload[sid][member.id]['User Muted']['until'] - time.time()
             if duration > 0:
-                role = discord.utils.get(member.server.roles, name=muterole)
+                rolename = self.settingsload[server.id]['Mute Role']
+                role = discord.utils.get(member.server.roles, name=rolename)
                 await self.bot.add_roles(member, role)
-                
-                
+  
                 if member.id not in self.handles[sid]:
                     self.schedule_unpunish(duration, member, reason)
 
     #other commands
     
+
     @commands.command(no_pm=True, pass_context=True)
     @checks.mod()
     async def warns(self, ctx):
@@ -857,14 +859,16 @@ class fmod:
             return
         for mid in self.warningsload[server.id]:
             try:
-                count = self.warningsload[server.id][mid]["Count"]
-                newcount += int(count)
+                for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
+                    if data['Warning Number'] == "Channel Denied":
+                        deniedcheck = True
+                    else:
+                        deniedcheck = False
+                    count = self.warningsload[server.id][mid]["Count"]
+                    newcount += int(count)
             except:
                 continue
                 
-        if newcount == 0:
-            await self.bot.say("No users are currently punished.")
-            return
         def getmname(mid):
             member = discord.utils.get(server.members, id=mid)
             if member:
@@ -876,19 +880,26 @@ class fmod:
                 mid = str(mid)
                 msg = '{} (Member not present)'.format(mid)
                 return msg
+        if newcount == 0 and deniedcheck == False:
+            await self.bot.say("No users are currently punished.")
+            return
         headers = ['Case ID', 'Member', 'Warning Number', 'Moderator', 'Reason']
         table = []
         disp_table = []   
         for mid in self.warningsload[server.id]:
             try:
                 for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
+                    print(data)
                     warnid = warning_key
+                    print(warnid)
                     member_name = getmname(data['User'])
+                    print(member_name)
                     numwarns = data['Warning Number']
+                    print (numwarns)
                     punisher_name = getmname(data['Mod'])
                     reason = data['Reason']
                     table.append((warnid, member_name, numwarns, punisher_name, reason))
-                    #print(table)
+                    print(table)
             except:
                 continue
 
@@ -897,17 +908,6 @@ class fmod:
 
         for page in pagify(tabulate(disp_table, headers)):
             await self.bot.say(box(page))
-    def getmname(mid):
-        member = discord.utils.get(server.members, id=mid)
-        if member:
-            if member.nick:
-                return '%s (%s)' % (member.nick, member)
-            else:
-                return str(member)
-        else:
-            mid = str(mid)
-            msg = '{} (Member not present)'.format(mid)
-            return msg
 
     async def delwarning(self, ctx, server, warnid, reason):
         server = ctx.message.server
@@ -925,7 +925,7 @@ class fmod:
                         if 'yes' in continuemsg.content:
                             user = discord.utils.get(server.members, id = mid)
                             await self.bot.say("Warning deleted!")
-                            if data['Warning Number'] == 'This user has been denied from a channel':
+                            if data['Warning Number'] == 'Channel Denied':
                                 role = self.settingsload[server.id]['Denied Role']
                                 role = discord.utils.get(server.roles, name = role)
                                 await self.bot.remove_roles(user,role)
@@ -937,7 +937,33 @@ class fmod:
                             else:
                                 count = self.warningsload[server.id][mid]["Count"]
                                 count = int(count)-1
-                                self.warningsload[server.id][mid].update({"Count": count}) 
+                                self.warningsload[server.id][mid].update({"Count": count})
+                                if 'Punishment Roles' in self.settingsload[server.id]:
+                                    if self.settingsload[server.id]['Punishment Roles'] == True:
+                                        try:
+                                            role = role = list(filter(lambda r: r.name.startswith('Warning \U0001f528'), server.roles))
+                                            await self.bot.remove_roles(user, *role)
+                                        except discord.errors.Forbidden:
+                                            await self.bot.send_message(channel, "No permission to add roles")
+                                    if count >= 1:
+                                        poops = count * "\U0001f528"
+                                        role_name = "Warning {}".format(poops)
+                                        is_there = False
+                                        colour = 0xbc7642
+                                        for role in server.roles:
+                                            if role.name == role_name:
+                                                poop_role = role
+                                                is_there = True
+                                        if not is_there:
+                                            poop_role = await self.bot.create_role(server)
+                                            await self.bot.edit_role(role=poop_role,
+                                                                     name=role_name,
+                                                                     server=server)
+                                        try:
+                                            await self.bot.add_roles(user,
+                                                                     poop_role)
+                                        except discord.errors.Forbidden:
+                                            await self.bot.say("No permission to add roles") 
                             embed = discord.Embed(title='Warning Revoked by {}'.format(ctx.message.author), description = revokemessage)
                             embed.add_field(name = 'Reason:', value = reason)
                             channel = await self.bot.start_private_message(user)
@@ -957,8 +983,9 @@ class fmod:
                             await self.bot.edit_message(embed2, embed=newembed)
                             await self.bot.clear_reactions(embed2)
                             return
-                    # else:
-                await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
+                    else:
+                        await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
+                    
             except:
                 continue
       
@@ -1010,7 +1037,6 @@ class fmod:
             return
         revokechannel = self.settingsload[server.id]['Denied Channel']
         deniedrole = self.settingsload[server.id]['Denied Role']
-        revokemessage = self.settingsload[server.id]['Revoke Message']
         channel = discord.utils.get(server.channels, name = revokechannel)
         if channel is None:
             msg = await self.bot.say ("I was unable to write to your log channel. Please make sure there is a channel called {} on the server!".format(revokechannel))
@@ -1033,7 +1059,7 @@ class fmod:
         if user.id in self.warningsload[server.id]:
             for warning_key, data in self.warningsload[server.id][user.id]["Warnings"].items():
                 try:
-                    if data['Warning Number'] == 'This user has been denied from a channel':
+                    if data['Warning Number'] == 'Channel Denied':
                         msg = await self.bot.say("This user has already been denied access to the channel.")
                         await asyncio.sleep(8)
                         await self.bot.delete_message(msg)          
@@ -1048,7 +1074,8 @@ class fmod:
                 await self.bot.delete_message(ctx.message)
                 await self.bot.add_roles(user, role)
                 dmuser = await self.bot.start_private_message(user)
-                await self.bot.send_message(dmuser, revokemessage)
+                embed = discord.Embed(title='You have been denied from {}'.format(channel), description = 'This is to let you know that you have been denied read permissions for the {} channel.'.format(channel))
+                await self.bot.send_message(dmuser, embed=embed)
                 reason=reason
                 if 'ID' not in self.warningsload[server.id]:
                     self.warningsload[server.id].update({'ID': ID})
@@ -1069,12 +1096,13 @@ class fmod:
                 logchannel = self.settingsload[server.id]['Log Channel']
                 logchannel = discord.utils.get(server.channels, name = logchannel)
                 mod = ctx.message.author
-                await self.embedlog(mod, user, reason, countnum, logchannel, ID, warntype='Denied')
+                await self.embedlog(mod, user, reason, countnum, logchannel, ID, warntype='denied')
                 self.warningsload[server.id][user.id]["Warnings"][ID] = {
+                    'Message ID': msgid,
                     'Reason': reason,
                     'Mod': ctx.message.author.id,
                     'User': user.id,
-                    'Warning Number': 'This user has been denied from a channel'
+                    'Warning Number': 'Channel Denied'
                 }
                 dataIO.save_json(self.warnings, self.warningsload)
                 for channel in server.channels:
