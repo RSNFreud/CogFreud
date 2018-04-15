@@ -200,9 +200,7 @@ class fmod:
                 await self.currentsettings(ctx, channel, server)
             else:
                 pass
-    async def currentsettings(self, ctx, channel, server):
-        if server.id not in self.settingsload:
-            pass   
+    async def currentsettings(self, ctx, channel, server): 
         jsonload = self.settingsload[server.id]
         message = "```\n"
         message += "Warn Message: {Warn Message},\n"
