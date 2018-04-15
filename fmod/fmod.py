@@ -222,6 +222,9 @@ class fmod:
     @checks.admin() 
     async def _settings(self,ctx):
         """Sets individual settings for the cog"""
+        if server.id not in self.settingsload:
+            await self.bot.say("Please run the `[p]setup` command before running this command.")
+            return
         channel = ctx.message.channel
         server = ctx.message.server
         if ctx.invoked_subcommand is None:
