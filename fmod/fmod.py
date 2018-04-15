@@ -28,6 +28,7 @@ UNIT_SUF_TABLE = {'sec': (1, ''),
 
 class BadTimeExpr(Exception):
     pass
+
 def _parse_time(time):
     if any(u in time for u in UNIT_TABLE.keys()):
         delim = '([0-9.]*[{}])'.format(''.join(UNIT_TABLE.keys()))
@@ -913,6 +914,7 @@ class fmod:
         for mid in self.warningsload[server.id]:
             try:
                 for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
+                    print (warning_key)
                     if warning_key == warnid:
                         await self.bot.say("Are you sure you want to delete warn number **{}**?\n\nType `yes` to continue.".format(warnid)) 
                         continuemsg = await self.bot.wait_for_message(channel=channel, author=ctx.message.author)
