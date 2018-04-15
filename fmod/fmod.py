@@ -28,7 +28,6 @@ UNIT_SUF_TABLE = {'sec': (1, ''),
 
 class BadTimeExpr(Exception):
     pass
-
 def _parse_time(time):
     if any(u in time for u in UNIT_TABLE.keys()):
         delim = '([0-9.]*[{}])'.format(''.join(UNIT_TABLE.keys()))
