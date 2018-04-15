@@ -911,6 +911,7 @@ class fmod:
     async def delwarning(self, ctx, server, warnid):
         server = ctx.message.server
         channel = ctx.message.channel
+        revokemessage = self.settingsload[server.id]['Revoke Message']
         for mid in self.warningsload[server.id]:
             try:
                 for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
@@ -929,7 +930,9 @@ class fmod:
                             else:
                                 count = self.warningsload[server.id][mid]["Count"]
                                 count = int(count)-1
-                                self.warningsload[server.id][mid].update({"Count": count})                   
+                                self.warningsload[server.id][mid].update({"Count": count}) 
+                                user = discord.utils.get(server.members, id = mid)                                
+                                await self.bot.send_message(user, revokemessage)
                             warnid = warning_key
                             del(self.warningsload[server.id][mid]['Warnings'][warnid])
                             dataIO.save_json(self.warnings, self.warningsload)
