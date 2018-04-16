@@ -1006,6 +1006,8 @@ class fmod:
         server = ctx.message.server
         channel = ctx.message.channel
         counter = self.warningsload[server.id][user.id]["Count"]
+        max = self.warningsload[server.id][user.id]["Warn Limit"]
+        max = int(max)
         counter = int(counter)
         count = int(count)
         if server.id not in self.settingsload:
@@ -1020,7 +1022,10 @@ class fmod:
             return
         if counter == 0:
             await self.bot.say("This user has no warnings!")
-            return            
+            return
+        if count >= max:
+            await self.bot.say("Please set the count to be under the maximum amount of warnings!")
+            return
         self.warningsload[server.id][user.id].update({'Count': count})
         dataIO.save_json(self.warnings, self.warningsload)
         await self.bot.say("Count updated!")
