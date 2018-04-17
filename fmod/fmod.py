@@ -860,14 +860,14 @@ class fmod:
             await self.bot.say("No users are currently punished.")
             return
         for mid in self.warningsload[server.id]:
+            count = self.warningsload[server.id][mid]["Count"]
+            newcount += int(count)
             try:
                 for warning_key, data in self.warningsload[server.id][mid]["Warnings"].items():
                     if data['Warning Number'] == "Channel Denied":
                         deniedcheck = True
                     else:
                         deniedcheck = False
-                    count = self.warningsload[server.id][mid]["Count"]
-                    newcount += int(count)
             except:
                 continue
                 
