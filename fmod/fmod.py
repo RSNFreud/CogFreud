@@ -223,7 +223,7 @@ class fmod:
         """Sets individual settings for the cog"""
         channel = ctx.message.channel
         server = ctx.message.server
-        
+
         if server.id not in self.settingsload:
             await self.bot.say("Please run the `[p]setup` command before running this command.")
             return
@@ -855,6 +855,7 @@ class fmod:
         server = ctx.message.server
         server_id = server.id
         newcount = 0
+        deniedcheck = True
         if not (server_id in self.warningsload and self.warningsload[server_id]):
             await self.bot.say("No users are currently punished.")
             return
@@ -984,8 +985,8 @@ class fmod:
                             await self.bot.edit_message(embed2, embed=newembed)
                             await self.bot.clear_reactions(embed2)
                             return
-                    else:
-                        await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
+                else:
+                    await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
                     
             except:
                 continue
@@ -1192,9 +1193,9 @@ class fmod:
                         dataIO.save_json(self.warnings, self.warningsload)
                         return
                     # else:
+                await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
             except:
                 continue
-            await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
                 
     @commands.command(no_pm=True, pass_context=True)
     async def report(self, ctx, user: discord.Member):
