@@ -223,6 +223,7 @@ class fmod:
         """Sets individual settings for the cog"""
         channel = ctx.message.channel
         server = ctx.message.server
+        
         if server.id not in self.settingsload:
             await self.bot.say("Please run the `[p]setup` command before running this command.")
             return
