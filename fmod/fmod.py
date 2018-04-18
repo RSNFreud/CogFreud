@@ -875,9 +875,6 @@ class fmod:
         def getmname(mid):
             member = discord.utils.get(server.members, id=mid)
             if member:
-                if member.nick:
-                    return '%s (%s)' % (member.nick, member)
-                else:
                     return str(member)
             else:
                 mid = str(mid)
