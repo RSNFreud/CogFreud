@@ -978,11 +978,10 @@ class fmod:
                             await self.bot.edit_message(embed2, embed=newembed)
                             await self.bot.clear_reactions(embed2)
                             return
-                else:
-                    await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
                     
             except:
                 continue
+        await self.bot.say("This warning was not found. Please make sure you typed it correctly!")
       
                     
     @commands.command(no_pm=True, pass_context=True)
