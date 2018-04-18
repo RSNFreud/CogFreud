@@ -881,7 +881,7 @@ class fmod:
                     return str(member)
             else:
                 mid = str(mid)
-                msg = '{} (Member not present)'.format(mid)
+                msg = '{}'.format(mid)
                 return msg
         if newcount == 0 and deniedcheck == False:
             await self.bot.say("No users are currently punished.")
